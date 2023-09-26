@@ -3,7 +3,9 @@ from http import HTTPStatus
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
+from pytils.translit import slugify
 
+from notes.forms import WARNING
 from notes.models import Note
 
 User = get_user_model()
@@ -12,6 +14,7 @@ User = get_user_model()
 class TestNoteCreation(TestCase):
     NOTE_TITLE = 'Заметка'
     NOTE_TEXT = 'Текст заметки'
+    NOTE_SLUG = 'new-slug'
 
     @classmethod
     def setUpTestData(cls):
@@ -24,6 +27,7 @@ class TestNoteCreation(TestCase):
         cls.data = {
             'title': cls.NOTE_TITLE,
             'text': cls.NOTE_TEXT,
+            'slug': cls.NOTE_SLUG,
         }
 
     def test_user_can_create_note(self):
@@ -40,6 +44,32 @@ class TestNoteCreation(TestCase):
         self.client.post(self.add_url, data=self.data)
         actual_notes_count = Note.objects.count()
         self.assertEqual(actual_notes_count, 0)
+
+    def test_not_unique_slug(self):
+        url = reverse('notes:add')
+        note = Note.objects.create(
+            title='Заголовок',
+            text='Текст заметки',
+            author=self.author,
+        )
+        self.data['slug'] = note.slug
+
+        self.client.force_login(self.author)
+        response = self.client.post(url, data=self.data)
+        self.assertFormError(response, 'form', 'slug', errors=(note.slug + WARNING))
+        self.assertEqual(Note.objects.count(), 1)
+
+    def test_empty_slug(self):
+        url = reverse('notes:add')
+        # Убираем поле slug из словаря:
+        self.data.pop('slug')
+        self.client.force_login(self.author)
+        response = self.client.post(url, data=self.data)
+        self.assertRedirects(response, reverse('notes:success'))
+        self.assertEqual(Note.objects.count(), 1)
+        new_note = Note.objects.get()
+        expected_slug = slugify(self.data['title'])
+        self.assertEqual(new_note.slug, expected_slug)
 
 
 class TestNoteEditDelete(TestCase):
