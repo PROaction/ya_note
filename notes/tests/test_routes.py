@@ -51,12 +51,34 @@ class TestRoutes(TestCase):
 
         for urls, expected_status_code in status_check:
             for name, args in urls:
+                with self.subTest():
+                    url = reverse(name, args=args)
+                    response = self.client.get(url)
+                    actual_status_code = response.status_code
+                    self.assertEqual(actual_status_code, expected_status_code)
+                    if actual_status_code == HTTPStatus.FOUND:
+                        self.check_redirect(response, url)
+
+    def test_pages_availability_for_auth_user(self):
+        urls = (
+            ('notes:home', None),
+            ('users:login', None),
+            ('users:logout', None),
+            ('users:signup', None),
+            ('notes:add', None),
+            ('notes:edit', (self.note.slug,)),
+            ('notes:delete', (self.note.slug,)),
+            ('notes:detail', (self.note.slug,)),
+            ('notes:list', None),
+            ('notes:success', None),
+        )
+
+        for name, args in urls:
+            self.client.force_login(self.author)
+            with self.subTest(name=name):
                 url = reverse(name, args=args)
                 response = self.client.get(url)
-                actual_status_code = response.status_code
-                self.assertEqual(actual_status_code, expected_status_code)
-                if actual_status_code == HTTPStatus.FOUND:
-                    self.check_redirect(response, url)
+                self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_personal_CRUD_for_notes(self):
         users_status = (
@@ -75,24 +97,3 @@ class TestRoutes(TestCase):
                     url = reverse(name, args=args)
                     response = self.client.get(url)
                     self.assertEqual(response.status_code, status)
-
-
-    #
-    #     for name, args in available_urls:
-    #         print('template_name:', name)
-    #         with self.subTest(name=name):
-    #             url = reverse(name, args=args)
-    #             response = self.client.get(url)
-    #             self.assertEqual(response.status_code, HTTPStatus.OK)
-    #
-    # def test_available_pages_for_anonymous(self):
-    #     urls = (
-    #         ('notes:add', None),
-    #         ('notes:edit', (self.note.slug, )),
-    #         ('notes:delete', (self.note.slug, )),
-    #         ('notes:detail', (self.note.slug,)),
-    #         ('notes:list', None),
-    #     )
-    #
-    #     for name, args in urls:
-

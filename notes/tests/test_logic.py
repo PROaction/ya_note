@@ -37,7 +37,7 @@ class TestNoteCreation(TestCase):
         self.assertEqual(note.author, self.author)
 
     def test_anon_dont_create_note(self):
-        response = self.client.post(self.add_url, data=self.data)
+        self.client.post(self.add_url, data=self.data)
         actual_notes_count = Note.objects.count()
         self.assertEqual(actual_notes_count, 0)
 

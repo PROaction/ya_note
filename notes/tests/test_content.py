@@ -21,7 +21,7 @@ class TestNotesPage(TestCase):
             author=cls.author,
         )
 
-    def test_display_note_for_author(self):
+    def test_notes_list_for_different_users(self):
         authors_note_count = len(Note.objects.all())
 
         test_datas = (
@@ -35,3 +35,16 @@ class TestNotesPage(TestCase):
                 note_list = response.context['note_list']
                 actual_note_count = len(note_list)
                 self.assertEqual(actual_note_count, expected_notes_count)
+
+    def test_pages_contains_form(self):
+        urls = (
+            ('notes:add', None),
+            ('notes:edit', (self.note.slug, )),
+        )
+
+        for name, args in urls:
+            self.client.force_login(self.author)
+            with self.subTest(name=name):
+                url = reverse(name, args=args)
+                response = self.client.get(url)
+                self.assertIn('form', response.context)
