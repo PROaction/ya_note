@@ -1,7 +1,7 @@
 from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import Client, TestCase
 from django.urls import reverse
 
 from notes.models import Note
@@ -15,12 +15,19 @@ class TestRoutes(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.author = User.objects.create(username='Автор заметки')
+
+
         cls.other_user = User.objects.create(username='Просто пользователь')
+        cls.other_user_client = Client()
+        cls.other_user_client.force_login(cls.other_user)
+
         cls.note = Note.objects.create(
             title='Заметка',
             text='Текст заметки',
             author=cls.author,
         )
+        cls.author_client = Client()
+        cls.author_client.force_login(cls.author)
 
         cls.personal_urls = (
             ('notes:edit', (cls.note.slug,)),
@@ -30,9 +37,9 @@ class TestRoutes(TestCase):
 
         cls.login_only_urls = (
             ('notes:add', None),
-            *cls.personal_urls,
             ('notes:list', None),
             ('notes:success', None),
+            *cls.personal_urls,
         )
 
         cls.all_available_urls = (
@@ -44,8 +51,7 @@ class TestRoutes(TestCase):
 
         cls.urls = (
             *cls.all_available_urls,
-            *cls.login_only_urls,
-            ('notes:list', None),
+            *cls.login_only_urls
         )
 
     def check_redirect(self, response, url):
@@ -58,7 +64,6 @@ class TestRoutes(TestCase):
             (self.all_available_urls, HTTPStatus.OK),
             (self.login_only_urls, HTTPStatus.FOUND),
         )
-
         for urls, expected_status_code in status_check:
             for name, args in urls:
                 with self.subTest():
@@ -70,22 +75,20 @@ class TestRoutes(TestCase):
                         self.check_redirect(response, url)
 
     def test_pages_availability_for_auth_user(self):
-        for name, args in self.urls:
-            self.client.force_login(self.author)
+        for name, args in self.login_only_urls:
             with self.subTest(name=name):
                 url = reverse(name, args=args)
-                response = self.client.get(url)
+                response = self.author_client.get(url)
                 self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_personal_interaction_for_notes(self):
         users_status = (
-            (self.author, HTTPStatus.OK),
-            (self.other_user, HTTPStatus.NOT_FOUND),
+            (self.author_client, HTTPStatus.OK),
+            (self.other_user_client, HTTPStatus.NOT_FOUND),
         )
-        for user, status in users_status:
-            self.client.force_login(user)
+        for user_client, status in users_status:
             for name, args in self.personal_urls:
-                with self.subTest(user=user, name=name):
+                with self.subTest(user=user_client, name=name):
                     url = reverse(name, args=args)
-                    response = self.client.get(url)
+                    response = user_client.get(url)
                     self.assertEqual(response.status_code, status)
