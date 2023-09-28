@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 
+from notes.forms import NoteForm
 from notes.models import Note
 
 
@@ -27,22 +28,16 @@ class TestNotesPage(TestCase):
             author=cls.author,
         )
 
-
-
     def test_notes_list_for_different_users(self):
-        authors_note_count = Note.objects.count()
-
-        test_datas = (
-            (self.author_client, authors_note_count),
-            (self.other_client, 0),
+        user_clients = (
+            (self.author_client, True),
+            (self.other_client, False),
         )
-        for user_client, expected_notes_count in test_datas:
-            self.client.force_login(user_client)
+        for user_client, notes_has_note in user_clients:
             with self.subTest(name=user_client):
-                response = self.client.get(self.NOTES_PAGE)
-                note_list = response.context['note_list']
-                actual_note_count = len(note_list)
-                self.assertEqual(actual_note_count, expected_notes_count)
+                response = user_client.get(self.NOTES_PAGE)
+                notes = response.context['note_list']
+                self.assertEqual(self.note in notes, notes_has_note)
 
     def test_pages_contains_form(self):
         urls = (
@@ -51,8 +46,10 @@ class TestNotesPage(TestCase):
         )
 
         for name, args in urls:
-            self.client.force_login(self.author)
             with self.subTest(name=name):
                 url = reverse(name, args=args)
-                response = self.client.get(url)
+                response = self.author_client.get(url)
                 self.assertIn('form', response.context)
+                self.assertIsInstance(
+                    response.context.get('form'), NoteForm
+                )
