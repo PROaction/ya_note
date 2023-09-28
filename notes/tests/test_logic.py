@@ -66,7 +66,6 @@ class TestNoteCreation(TestCase):
 
     def test_empty_slug(self):
         url = reverse('notes:add')
-        # Убираем поле slug из словаря:
         self.data.pop('slug')
         self.client.force_login(self.author)
         response = self.client.post(url, data=self.data)
