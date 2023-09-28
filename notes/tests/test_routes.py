@@ -15,7 +15,8 @@ class TestRoutes(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.author = User.objects.create(username='Автор заметки')
-
+        cls.author_client = Client()
+        cls.author_client.force_login(cls.author)
 
         cls.other_user = User.objects.create(username='Просто пользователь')
         cls.other_user_client = Client()
@@ -26,8 +27,6 @@ class TestRoutes(TestCase):
             text='Текст заметки',
             author=cls.author,
         )
-        cls.author_client = Client()
-        cls.author_client.force_login(cls.author)
 
         cls.personal_urls = (
             ('notes:edit', (cls.note.slug,)),
@@ -47,11 +46,6 @@ class TestRoutes(TestCase):
             ('users:login', None),
             ('users:logout', None),
             ('users:signup', None),
-        )
-
-        cls.urls = (
-            *cls.all_available_urls,
-            *cls.login_only_urls
         )
 
     def check_redirect(self, response, url):
